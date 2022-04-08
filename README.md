@@ -13,8 +13,10 @@
 $ kintone-plugin-packer  --ppk PLUGIN_SECRET_KEY.ppk contents
 ```
 4. 作成された plugin.zip を kintone に登録する。
+## Demo
+![image](https://user-images.githubusercontent.com/58966019/162155281-7467bc08-a4b9-42ab-8b66-e22f56224005.png)
 ## Features
-- Box の認証は　OAuth2.0 ではなくアプリトークンを使用します。
-- Box のフォルダの作成と最大４つまでの階層フォルダが作成できます。
-- 階層フォルダのドロップダウンが使えます。
+- Box の認証は OAuth2.0 ではなくアプリトークンを使用。
+- Box のフォルダの作成と最大４つまでの階層フォルダが作成できる。
+- 階層フォルダのドロップダウンが使える。
  
