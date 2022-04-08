@@ -1,0 +1,41 @@
+{
+    "manifest_version": 1,
+    "version": 2,
+    "type": "APP",
+    "name": {
+        "ja": "Box UI プラグイン",
+        "en": "Box UI for kintone"
+    },
+    "description": {
+        "ja": "kintone に Box UI を表示するプラグイン",
+        "en": "Simple, secure sharing from anywhere"
+    },
+    "icon": "image/icon.png",
+    "homepage_url": {
+    },
+    "desktop": {
+        "js": [
+            "js/jquery.min.js",
+            "js/jsrender.min.js",
+            "js/desktop.js",
+            "https://cdn.polyfill.io/v2/polyfill.min.js?features=es6,Intl",
+            "https://cdn01.boxcdn.net/platform/elements/13.0.0/ja-JP/explorer.js"
+        ],
+        "css": [
+            "css/desktop-51-modern.css",
+            "https://cdn01.boxcdn.net/platform/elements/13.0.0/ja-JP/explorer.css"
+        ]
+    },
+    "config": {
+        "html": "html/config.html",
+        "js": [
+            "js/jquery.min.js",
+            "js/jsrender.min.js",
+            "js/config.js"
+        ],
+        "css": [
+            "css/51-modern-default.css"
+        ],
+        "required_params": ["boxAppToken", "parentFolderId", "folderNameFld", "folderIdFld", "boxUiSpace"]
+    }
+}
