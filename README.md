@@ -10,7 +10,11 @@
 をインストールする。
 3. プラグインを作成する。
 ```
-$ kintone-plugin-packer  --ppk PLUGIN_SECRET_KEY.ppk contents
+初回
+$ kintone-plugin-packer  contents
+2回目以降
+$ kintone-plugin-packer  --ppk 初回に作成された.ppk contents
+
 ```
 4. 作成された plugin.zip を kintone に登録する。
 ## Demo
