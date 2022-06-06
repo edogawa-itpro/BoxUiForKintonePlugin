@@ -21,6 +21,8 @@ jQuery.noConflict();
                 'child3_folder_name_fld_description': 'Single-line text field or Drop down',
                 'child4_folder_name_fld': 'kintone Field for Box child 4 Folder Name',
                 'child4_folder_name_fld_description': 'Single-line text field or Drop down',
+                'child5_folder_name_fld': 'kintone Field for Box child 5 Folder Name',
+                'child5_folder_name_fld_description': 'Single-line text field or Drop down',
                 'child1_folder_select_space': 'Box child 1 Folder Selector display posision',
                 'child1_folder_select_space_description': 'space field',
                 'child2_folder_select_space': 'Box child 2 Folder Selector display posision',
@@ -29,6 +31,8 @@ jQuery.noConflict();
                 'child3_folder_select_space_description': 'space field',
                 'child4_folder_select_space': 'Box child 4 Folder Selector display posision',
                 'child4_folder_select_space_description': 'space field',
+                'child5_folder_select_space': 'Box child 5 Folder Selector display posision',
+                'child5_folder_select_space_description': 'space field',
                 'plugin_submit': '     Save   ',
                 'plugin_cancel': '     Cancel   ',
                 'required_field': 'Please enter the required field.',
@@ -54,6 +58,8 @@ jQuery.noConflict();
                 'child3_folder_name_fld_description': '文字列（1行）またはドロップダウン',
                 'child4_folder_name_fld': '子フォルダ(親から見て第４階層)を作る場合のkintoneフィールド',
                 'child4_folder_name_fld_description': '文字列（1行）またはドロップダウン',
+                'child5_folder_name_fld': '子フォルダ(親から見て第５階層)を作る場合のkintoneフィールド',
+                'child5_folder_name_fld_description': '文字列（1行）またはドロップダウン',
                 'child1_folder_select_space': 'Box 子フォルダの第１階層から第４階層のフォルダーセレクタを表示する場合の位置',
                 'child1_folder_select_space_description': 'スペースフィールド',
                 'child2_folder_select_space': 'Box 子フォルダ第２階層セレクタ表示位置',
@@ -62,6 +68,8 @@ jQuery.noConflict();
                 'child3_folder_select_space_description': 'スペースフィールド',
                 'child4_folder_select_space': 'Box 子フォルダ第４階層セレクタ表示位置',
                 'child4_folder_select_space_description': 'スペースフィールド',
+                'child5_folder_select_space': 'Box 子フォルダ第５階層セレクタ表示位置',
+                'child5_folder_select_space_description': 'スペースフィールド',
                 'plugin_submit': '     保存   ',
                 'plugin_cancel': '  キャンセル   ',
                 'required_field': '必須項目を入力してください。',
@@ -109,6 +117,7 @@ jQuery.noConflict();
                     $('#child2_folder_name_fld').append($('<OPTION>').text(prop['label']).val(prop['code']));
                     $('#child3_folder_name_fld').append($('<OPTION>').text(prop['label']).val(prop['code']));
                     $('#child4_folder_name_fld').append($('<OPTION>').text(prop['label']).val(prop['code']));
+                    $('#child5_folder_name_fld').append($('<OPTION>').text(prop['label']).val(prop['code']));
                 }
                 if (prop['type'] === 'SPACER' ) {
                     $('#box_ui_space').append($('<OPTION>').text(prop['elementId']));
@@ -116,6 +125,7 @@ jQuery.noConflict();
                     $('#child2_folder_select_space').append($('<OPTION>').text(prop['elementId']));
                     $('#child3_folder_select_space').append($('<OPTION>').text(prop['elementId']));
                     $('#child4_folder_select_space').append($('<OPTION>').text(prop['elementId']));
+                    $('#child5_folder_select_space').append($('<OPTION>').text(prop['elementId']));
                 }
             }
 
@@ -148,6 +158,9 @@ jQuery.noConflict();
             if (config['child4FolderNameFld']) {
                 $('#child4_folder_name_fld').val(config['child4FolderNameFld']);
             }
+            if (config['child5FolderNameFld']) {
+                $('#child5_folder_name_fld').val(config['child5FolderNameFld']);
+            }
             if (config['child1FolderSelectSpace']) {
                 $('#child1_folder_select_space').val(config['child1FolderSelectSpace']);
             }
@@ -159,6 +172,9 @@ jQuery.noConflict();
             }
             if (config['child4FolderSelectSpace']) {
                 $('#child4_folder_select_space').val(config['child4FolderSelectSpace']);
+            }
+            if (config['child5FolderSelectSpace']) {
+                $('#child5_folder_select_space').val(config['child5FolderSelectSpace']);
             }
         });
 
@@ -173,10 +189,12 @@ jQuery.noConflict();
             var child2FolderNameFld = $('#child2_folder_name_fld').val();
             var child3FolderNameFld = $('#child3_folder_name_fld').val();
             var child4FolderNameFld = $('#child4_folder_name_fld').val();
+            var child5FolderNameFld = $('#child5_folder_name_fld').val();
             var child1FolderSelectSpace = $('#child1_folder_select_space').val();
             var child2FolderSelectSpace = $('#child2_folder_select_space').val();
             var child3FolderSelectSpace = $('#child3_folder_select_space').val();
             var child4FolderSelectSpace = $('#child4_folder_select_space').val();
+            var child5FolderSelectSpace = $('#child5_folder_select_space').val();
 
             if (!parentFolderId.match(/^[0-9]+$/) || folderIdFld.length > 20) {
                 alert(i18n.invalid_folder_id);
@@ -206,10 +224,12 @@ jQuery.noConflict();
             config['child2FolderNameFld'] = child2FolderNameFld;
             config['child3FolderNameFld'] = child3FolderNameFld;
             config['child4FolderNameFld'] = child4FolderNameFld;
+            config['child5FolderNameFld'] = child5FolderNameFld;
             config['child1FolderSelectSpace'] = child1FolderSelectSpace;
             config['child2FolderSelectSpace'] = child2FolderSelectSpace;
             config['child3FolderSelectSpace'] = child3FolderSelectSpace;
             config['child4FolderSelectSpace'] = child4FolderSelectSpace;
+            config['child5FolderSelectSpace'] = child5FolderSelectSpace;
 
             kintone.plugin.app.setConfig(config);
         });
