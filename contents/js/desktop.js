@@ -6,7 +6,6 @@ jQuery.noConflict();
     var config;
 
     var BOX_API_BASE_URL = 'https://api.box.com/2.0';
- //   var childFolderNames = []; // 階層フォルダの削除で使用
     var configChildFolderNameFlds = []; // config の階層名が入る項目(名)の配列
 
     // 多言語化の作法
@@ -16,25 +15,40 @@ jQuery.noConflict();
             'failed_to_create_folder': 'Cannot create new folder.',
             'failed_to_create_folder': 'Cannot create new sub folder.',
             'enter_box_folder_name_field': 'Box folder name field is required.',
+            'item_name_in_use': 'folder name in use.',
+            'item_name_invalid': 'folder name contain invalid character.',
             'error': 'Error:'
         },
         'ja': {
             'failed_to_create_folder': 'フォルダを作成できません。内容を修正後再度試してください。',
             'failed_to_create_subfolder': 'サブフォルダを作成できません。',
             'enter_box_folder_name_field': 'Boxフォルダー名フィールドは必須です。',
+            'item_name_in_use': '同じ名前のフォルダーが既にあります。',
+            'item_name_invalid': 'フォルダ名に使用できない文字が含まれています。',
             'error': 'Error:'
         }
     };
     var lang = kintone.getLoginUser().language;
     var i18n = (lang in terms) ? terms[lang] : terms['en'];
 
-    // config 情報の読込とチェック
+    // 良くあるBoxのエラーを要約する
+    function translateBoxErrorMsg( box_response ) {
+        if( box_response.indexOf("item_name_in_use") != -1 ) {
+            return i18n.item_name_in_use;
+        }  
+        if( box_response.indexOf("item_name_invalid") != -1 ) {
+            return i18n.item_name_invalid;
+        }  
+        return box_response ;
+    }
+
+    // config 情報の読込とチェック(イベントの都度呼ぶ)
     //   イベント処理で毎回行う。(record は何に使うんだろう？)
     var validateConfig = function(record) {
         config = kintone.plugin.app.getConfig(PLUGIN_ID);
         if (!config) {return false;}
 
-        // config の階層名項目を配列へ(configでは配列での保存はできない)
+        // config の階層名項目を配列へ(configでは配列の保存はできない)
         configChildFolderNameFlds = [];
         if( config.child1FolderNameFld ) {
             configChildFolderNameFlds.push( config.child1FolderNameFld ); 
@@ -51,12 +65,11 @@ jQuery.noConflict();
                 }
             } 
         }        
- 
         return true;
     };
 
-    // Box UI Element による表示
-    //  いくつかのオプションは設定できると良いかも？
+    // Box UI Element の表示
+    //  いくつかのオプションは設定できると良いかも(Todo)
     function dsp_box_ui_view( access_token, folder_id, element_id ) {
 
         var element_selector = "#" + element_id;
@@ -262,7 +275,7 @@ jQuery.noConflict();
                 // 作成成功ならフォルダIDをフィールドに格納
                 event.record[config.folderIdFld].value = result.id;   
             } catch(e) {
-                error = i18n.failed_to_create_folder + '\n' + e.status + '\n' + e.responseText ;               
+                error = i18n.failed_to_create_folder + '\n' + translateBoxErrorMsg(JSON.stringify(JSON.parse(e.responseText))) ;               
             }
         }
         if (error) {event.error = error;}
@@ -291,7 +304,6 @@ jQuery.noConflict();
         }
         return parent_folder_id;
     }
-
 
     // レコード削除処理(共通)
     //    event を返すこと
@@ -331,17 +343,21 @@ jQuery.noConflict();
                 status = false;
             }
         } catch(e) {
-            error = "フォルダ見つからないか、もしくは権限がありません"
-            status = false;
+            var msg = "フォルダ見つからないか、もしくは権限がありません";
+            var res = confirm( msg + "\n無視して処理を続行しますか？");
+            if (res === false) {   
+                error = "処理がキャンセルされました。"
+                status = false;
+            } 
         }
-        // 階層フォルダ情報があれば可能なら削除
+        // 階層フォルダ情報があれば可能(空)なら削除
         if( status && childFolderNames.length > 0 ) {
             try {
                 if( folder_info.path_collection ) {
                     // 階層の配列->parents(0:全てのファイル=root)
                     var parents = folder_info.path_collection.entries;
                     // 後方から照合していく
-                    var j = childFolderNames.length - 1;
+                    var j = childFolderNames.length - 1; 
                     for( var i = parents.length - 1; j >= 0 && i > 1 ; i-- ) {
                         var parent = parents[i];
                         if( parent.type === "folder" && parent.name === childFolderNames[j] ) {
@@ -366,7 +382,7 @@ jQuery.noConflict();
 
     //  ドロップダウン(select)のエレメント作成
     //     51-modern-default.css を利用
-    var createDropdown = function( id ) {
+    var createDropdownElement = function( id ) {
 
         // ★ jQuery のエレメントは kintone.app.record.getHeaderMenuSpaceElement().appendChild()でエラーになる。
         // var element = $('<div>'); ×
@@ -468,26 +484,48 @@ jQuery.noConflict();
         }   
     }
 
+
+    // select box text による選択
+    //    selectエレメントを指定 value を返す(filter使うな simple is better!)
+    function setSelectedByText( select, text ) {
+        var options = select.options;
+        for(var i = 0; i < options.length; i++){
+	    if(options[i].text === text ){
+		options[i].selected = true;
+		return options[i].value;
+	    };
+        };
+    }
+
     //
     // Boxフォルダ階層選択ドロップダウン表示
     //    新規入力画面を開いた際に設定
     //
     var displayDropDown = async function(event) {
         var record = event.record;
+
+        // KUC を使う場合(KUCを使うと外から css のカスタマイズが出来ない)
         var dropdown1;
         var dropdown2;
         var dropdown3;
         var dropdown4;
         var dropdown5;
 
-        // KUC を使わない場合
         var select1; 
         var select2;
         var select3;
         var select4;
         var select5;
 
+        // 複写時のリスト作成用
+        var subfolder_id1;
+        var subfolder_id2;
+        var subfolder_id3;
+        var subfolder_id4;
+        var subfolder_id5;
+
         // config に設定があればドロップダウンを表示
+        //   複写入力時の初期化も考慮
         if( config.child1FolderSelectSpace ) {
   
             // element 作成
@@ -495,7 +533,7 @@ jQuery.noConflict();
             // dropdown1 = new Kuc.Dropdown({items: []});
 
             // non kuc
-            dropdown1 = createDropdown('dropdown_select_1');
+            dropdown1 = createDropdownElement('dropdown_select_1');
 
             // フォルダ選択肢を設定(１階層目は親フォルダ直下)
             // kuc
@@ -507,6 +545,13 @@ jQuery.noConflict();
             // non kuc
             select1 = $('#dropdown_select_1').get(0);
             await setSelectItems( config.parentFolderId, select1 ); 
+
+            // フィールドに値があるか(複写時の階層選択設定)
+            var selected_name = record[ config.child1FolderNameFld ].value; 
+            if( selected_name ) {
+                subfolder_id1 = setSelectedByText( select1, selected_name );
+            }
+
         }
 
         // ２階層以下同様
@@ -515,30 +560,66 @@ jQuery.noConflict();
             // dropdown2 = new Kuc.Dropdown({items: []});
             // kintone.app.record.getSpaceElement(config.child2FolderSelectSpace).appendChild(dropdown2);
             // non kuc
-            dropdown2 = createDropdown('dropdown_select_2');
+            dropdown2 = createDropdownElement('dropdown_select_2');
             kintone.app.record.getSpaceElement(config.child2FolderSelectSpace).appendChild(dropdown2);
             select2 = $('#dropdown_select_2').get(0);
+
+            // フィールドに値があるか(複写時の階層選択設定)
+            if( subfolder_id1 ) {
+                await setSelectItems( subfolder_id1, select2 ); 
+                var selected_name = record[ config.child2FolderNameFld ].value; 
+                if( selected_name ) {
+                     subfolder_id2 = setSelectedByText( select2, selected_name );
+                }
+            }
+
         }
         if( config.child3FolderSelectSpace ) {
             // dropdown3 = new Kuc.Dropdown({items: []});
             // kintone.app.record.getSpaceElement(config.child3FolderSelectSpace).appendChild(dropdown3);
-            dropdown3 = createDropdown('dropdown_select_3');
+            dropdown3 = createDropdownElement('dropdown_select_3');
             kintone.app.record.getSpaceElement(config.child3FolderSelectSpace).appendChild(dropdown3);
             select3 = $('#dropdown_select_3').get(0);
+
+            // フィールドに値があるか(複写時の階層選択設定)
+            if( subfolder_id2 ) {
+                await setSelectItems( subfolder_id2, select3 ); 
+                var selected_name = record[ config.child3FolderNameFld ].value; 
+                if( selected_name ) {
+                     subfolder_id3 = setSelectedByText( select3, selected_name );
+                }
+            }
+
         }
         if( config.child4FolderSelectSpace ) {
             // dropdown4 = new Kuc.Dropdown({items: []});
             // kintone.app.record.getSpaceElement(config.child4FolderSelectSpace).appendChild(dropdown4);
-            dropdown4 = createDropdown('dropdown_select_4');
+            dropdown4 = createDropdownElement('dropdown_select_4');
             kintone.app.record.getSpaceElement(config.child4FolderSelectSpace).appendChild(dropdown4);
             select4 = $('#dropdown_select_4').get(0);
+            // フィールドに値があるか(複写時の階層選択設定)
+            if( subfolder_id3 ) {
+                await setSelectItems( subfolder_id3, select4 ); 
+                var selected_name = record[ config.child4FolderNameFld ].value; 
+                if( selected_name ) {
+                     subfolder_id4 = setSelectedByText( select4, selected_name );
+                }
+            }
         }
         if( config.child5FolderSelectSpace ) {
             // dropdown5 = new Kuc.Dropdown({items: []});
             // kintone.app.record.getSpaceElement(config.child5FolderSelectSpace).appendChild(dropdown5);
-            dropdown5 = createDropdown('dropdown_select_5');
+            dropdown5 = createDropdownElement('dropdown_select_5');
             kintone.app.record.getSpaceElement(config.child5FolderSelectSpace).appendChild(dropdown5);
             select5 = $('#dropdown_select_5').get(0);
+            // フィールドに値があるか(複写時の階層選択設定)
+            if( subfolder_id4 ) {
+                await setSelectItems( subfolder_id4, select5 ); 
+                var selected_name = record[ config.child5FolderNameFld ].value; 
+                if( selected_name ) {
+                     subfolder_id5 = setSelectedByText( select5, selected_name );
+                }
+            }
         }
  
         if( dropdown1 ) {
@@ -680,61 +761,17 @@ jQuery.noConflict();
     // Kintone のイベント処理
     //
 
-    // 詳細画面表示時の処理
-    kintone.events.on('app.record.detail.show', function(event) {
-
-        if (validateConfig(event.record)) {
-            var folder_id = event.record[config.folderIdFld]["value"];  
-
-            if ( folder_id ) {
-                // Box UIElement 表示エレメント作成
-                var box_ui_element = document.createElement('div');
-                box_ui_element.id = 'box_ui_element';
-
-                // スペース位置にエレメントを追加する
-                kintone.app.record.getSpaceElement(config.boxUiSpace).appendChild(box_ui_element);
-                //   スペースの枠(親要素にある)の min-width と同じに設定する。(min-heightは指定しても無視される)
-                var p_element = kintone.app.record.getSpaceElement(config.boxUiSpace).parentNode;
-                box_ui_element.style.setProperty("min-width", p_element.style.minWidth ) ;
-
-                dsp_box_ui_view( config.boxAppToken, folder_id, box_ui_element.id );
-            }
-            hidden_dropdown_spaces(); // 階層ドロップダウン用スペース非表示
-        }
-        return event;
-    });
-
-    // 新規レコード保存時
-    kintone.events.on('app.record.create.submit', async function(event) {
-        return submitRecord(event);
-    });
-
-    // 編集レコード保存時
-    kintone.events.on('app.record.edit.submit', async function(event) {
-        if (!event.record[config.folderIdFld].value) {
-            return submitRecord(event);
-        }
-        return event;
-    });
-
-    // 削除レコード時
-    kintone.events.on(['app.record.detail.delete.submit','app.record.index.delete.submit'], async function(event) {
-        if (validateConfig(event.record)) {
-            // フォルダーIDがあれば削除を試みる
-            if (event.record[config.folderIdFld].value) {
-                return submitDeleteRecord(event);
-            }
-        }
-        return event;
-    });
-
     // 明細新規
     kintone.events.on('app.record.create.show', function(event) {
         if (validateConfig(event.record)) {
 
+            // 複写時の対応
+            event.record[config.folderIdFld]["value"] = '';    
+
             // フォルダIDは入力禁止
             event.record[config.folderIdFld]['disabled'] = true;  
             displayDropDown( event );
+
         }
         return event;
     });
@@ -781,5 +818,55 @@ jQuery.noConflict();
         }
         return event;
     });
+
+    // 詳細画面表示時の処理
+    kintone.events.on('app.record.detail.show', function(event) {
+
+        if (validateConfig(event.record)) {
+
+            var folder_id = event.record[config.folderIdFld]["value"];  
+
+            if ( folder_id ) {
+                // Box UIElement 表示エレメント作成
+                var box_ui_element = document.createElement('div');
+                box_ui_element.id = 'box_ui_element';
+
+                // スペース位置にエレメントを追加する
+                kintone.app.record.getSpaceElement(config.boxUiSpace).appendChild(box_ui_element);
+                //   スペースの枠(親要素にある)の min-width と同じに設定する。(min-heightは指定しても無視される)
+                var p_element = kintone.app.record.getSpaceElement(config.boxUiSpace).parentNode;
+                box_ui_element.style.setProperty("min-width", p_element.style.minWidth ) ;
+
+                dsp_box_ui_view( config.boxAppToken, folder_id, box_ui_element.id );
+            }
+            hidden_dropdown_spaces(); // 階層ドロップダウン用スペース非表示
+        }
+        return event;
+    });
+
+    // 新規レコード保存時
+    kintone.events.on('app.record.create.submit', async function(event) {
+        return submitRecord(event);
+    });
+
+    // 編集レコード保存時
+    kintone.events.on('app.record.edit.submit', async function(event) {
+        if (!event.record[config.folderIdFld].value) {
+            return submitRecord(event);
+        }
+        return event;
+    });
+
+    // 削除レコード時
+    kintone.events.on(['app.record.detail.delete.submit','app.record.index.delete.submit'], async function(event) {
+        if (validateConfig(event.record)) {
+            // フォルダーIDがあれば削除を試みる
+            if (event.record[config.folderIdFld].value) {
+                return submitDeleteRecord(event);
+            }
+        }
+        return event;
+    });
+
 
 })(jQuery, kintone.$PLUGIN_ID);
