@@ -3,10 +3,18 @@ jQuery.noConflict();
 (function($, PLUGIN_ID) {
     'use strict';
 
-    var config;
+    // プラグインの設定値読み込み
+    var config = kintone.plugin.app.getConfig(PLUGIN_ID);
+    if (!config) {
+        return false;
+    }
 
     var BOX_API_BASE_URL = 'https://api.box.com/2.0';
     var configChildFolderNameFlds = []; // config の階層名が入る項目(名)の配列
+    var selectOnlyDepth = parseInt(config.childFolderSelectOnlyDepth) || 0;  // 選択のみの階層数
+    var maxDelayTime = parseInt(config.maxDelayTime) || 0;  // 最大遅延時間
+    var delayCount = maxDelayTime; // 残り遅延時間
+    var delayCancel = false;       // キャンセル指示
 
     // 多言語化の作法
     // 例) event.error = i18n.failed_to_create_folder;
@@ -31,6 +39,24 @@ jQuery.noConflict();
     var lang = kintone.getLoginUser().language;
     var i18n = (lang in terms) ? terms[lang] : terms['en'];
 
+    // config の階層名項目を配列へ(configでは配列の保存はできない)
+    configChildFolderNameFlds = [];
+    if( config.child1FolderNameFld ) {
+        configChildFolderNameFlds.push( config.child1FolderNameFld ); 
+        if( config.child2FolderNameFld ) {
+            configChildFolderNameFlds.push( config.child2FolderNameFld ); 
+            if( config.child3FolderNameFld ) {
+                configChildFolderNameFlds.push( config.child3FolderNameFld) ; 
+                if( config.child4FolderNameFld ) {
+                    configChildFolderNameFlds.push( config.child4FolderNameFld ); 
+                    if( config.child5FolderNameFld ) {
+                        configChildFolderNameFlds.push( config.child5FolderNameFld );
+                    }
+                }
+            }
+        } 
+    }        
+
     // 良くあるBoxのエラーを要約する
     function translateBoxErrorMsg( box_response ) {
         if( box_response.indexOf("item_name_in_use") != -1 ) {
@@ -42,31 +68,50 @@ jQuery.noConflict();
         return box_response ;
     }
 
+    // 遅延制御
+    //   javascript から呼び出す
+    var BoxUiPlugin = {
+        setDone : function() {
+            delayCount = 0;
+        },
+        setCancel : function() {
+            delayCount  = 0;
+            delayCancel = true;
+        }
+    }
+    window.BoxUiPlugin = BoxUiPlugin;
+
+    // 遅延初期化  編集開始時に設定する
+    function delayInit() {
+        if( maxDelayTime > 0 ) {
+            delayCount  = maxDelayTime*10; // 10ms刻み
+            delayCancel = false;
+        }
+    }
+
+    async function sleep(ms) {
+        return new Promise( function(resolve) { setTimeout(resolve, ms); });
+    }
+
+    // 遅延待ち
+    async function delayWait() {
+        var isCancel = false;
+        while( delayCount > 0  ) {
+            await sleep(10);
+            delayCount--;
+        }
+        isCancel = delayCancel;
+        delayInit(); // 次回の用意
+        return isCancel;
+    }
+
     // config 情報の読込とチェック(イベントの都度呼ぶ)
-    //   イベント処理で毎回行う。(record は何に使うんだろう？)
+    //   毎回configを読む理由が不明？
     var validateConfig = function(record) {
         config = kintone.plugin.app.getConfig(PLUGIN_ID);
         if (!config) {return false;}
-
-        // config の階層名項目を配列へ(configでは配列の保存はできない)
-        configChildFolderNameFlds = [];
-        if( config.child1FolderNameFld ) {
-            configChildFolderNameFlds.push( config.child1FolderNameFld ); 
-            if( config.child2FolderNameFld ) {
-                configChildFolderNameFlds.push( config.child2FolderNameFld ); 
-                if( config.child3FolderNameFld ) {
-                    configChildFolderNameFlds.push( config.child3FolderNameFld) ; 
-                    if( config.child4FolderNameFld ) {
-                        configChildFolderNameFlds.push( config.child4FolderNameFld ); 
-                        if( config.child5FolderNameFld ) {
-                            configChildFolderNameFlds.push( config.child5FolderNameFld );
-                        }
-                    }
-                }
-            } 
-        }        
         return true;
-    };
+    }
 
     // Box UI Element の表示
     //  いくつかのオプションは設定できると良いかも(Todo)
@@ -140,7 +185,7 @@ jQuery.noConflict();
     async function get_folder_items(folder_id) {
         try {
             // default limit=100 1000件以上の場合はoffsetかmarkerを使う。
-            return ajax_get( BOX_API_BASE_URL + '/folders/' + folder_id + '/items?limit=1000', config.boxAppToken );
+            return ajax_get( BOX_API_BASE_URL + '/folders/' + folder_id + '/items?fields=type,id,sequence_id,etag,name,description&imit=1000', config.boxAppToken );
         } catch(e) {
           throw e;
         }
@@ -251,6 +296,10 @@ jQuery.noConflict();
             return event;
         }
 
+        // 遅延制御 キャンセルなら処理をしない
+        var isCancel = await delayWait();
+        if( isCancel ) return event;
+
         // フォルダ名は必須
         if (!event.record[config.folderNameFld].value) {
             event.record[config.folderNameFld].error = i18n.enter_box_folder_name_field;
@@ -317,6 +366,10 @@ jQuery.noConflict();
             event.error = i18n.failed_to_create_folder;
             return event;
         }
+
+        // 遅延制御 キャンセルなら処理をしない
+        var isCancel = await delayWait();
+        if( isCancel ) return event;
 
         // フォルダIDが無ければ何もしない
         if (!record[config.folderIdFld].value) return event;
@@ -415,8 +468,16 @@ jQuery.noConflict();
         }
         if( entries ) {
 
+            // 標準では"name"順にしか出来ないので、"description"(説明)でソート出来るようにした。
+            var sorted = entries.sort(function(item1,item2) {
+                if( item1.description > item2.description ) return  1;    
+                if( item1.description < item2.description ) return -1;    
+                if( item1.name >= item2.description ) return  1;    
+                if( item1.name <  item2.description ) return -1;    
+            });
+
             // 子フォルダをリストに追加 
-            entries.forEach(function(item) {
+            sorted.forEach(function(item) {
                 if( item.type === 'folder' ) { 
                     option_html += '<option value="' + item.id + '">' + item.name + '</option>';                    
                 }
@@ -517,7 +578,7 @@ jQuery.noConflict();
         var select4;
         var select5;
 
-        // 複写時のリスト作成用
+        // レコード複写登録時のリスト作成用
         var subfolder_id1;
         var subfolder_id2;
         var subfolder_id3;
@@ -757,24 +818,67 @@ jQuery.noConflict();
         return event;
     }
 
-    //
-    // Kintone のイベント処理
-    //
+    // サブフォルダの入力禁止
+    function disableSubFolderFields( event, limit ) {
+        for( var i = 0; i < configChildFolderNameFlds.length ; i++ ) {
+            if( i >= limit ) break;
+            event.record[configChildFolderNameFlds[i]]['disabled'] = true;  
+        }     
+    }
 
-    // 明細新規
-    kintone.events.on('app.record.create.show', function(event) {
-        if (validateConfig(event.record)) {
+    // サブフォルダの入力イベントの処理
+    function subFolderFieldChange( event, no ) {
 
-            // 複写時の対応
-            event.record[config.folderIdFld]["value"] = '';    
+        // alert( no + ":イベント！");
+        // ToDo
+        // 直接入力されたら、この階層にフォルダが既にあるか見て、あるならselectを選択状態にし
+        // 次の階層のselect要素を準備する
+        // 実際問題、無いから入力するのが普通でこのままでもそれほど違和感は無い      
 
-            // フォルダIDは入力禁止
-            event.record[config.folderIdFld]['disabled'] = true;  
-            displayDropDown( event );
-
-        }
         return event;
-    });
+    }
+
+    //
+    // ■ Kintone のイベント処理
+    //
+
+    // Kintoneのフィールドイベント
+    //   子フォルダの入力イベント(セレクトボックスからの設定でも起こる)
+    //   まとめて処理できそうだが、どのフィールドで起こったかの情報が無い(changesにも無い) 
+    //   入口だけ愚直に書く。
+    // var events = [];
+    // for( var i = 0; i < configChildFolderNameFlds.length ; i++ ) {
+    //     events.push('app.record.create.change.' + configChildFolderNameFlds[i] );  
+    // }     
+    // kintone.events.on( events, function(event) {
+    //    alert( event.changes.field.value + "イベント！");
+    //    return event;
+    // });
+    if( config.child1FolderNameFld ) {
+        kintone.events.on( 'app.record.create.change.' + config.child1FolderNameFld, function(event) {
+            return subFolderFieldChange( event, 1 );
+        });
+    }
+    if( config.child2FolderNameFld ) {
+        kintone.events.on( 'app.record.create.change.' + config.child2FolderNameFld, function(event) {
+            return subFolderFieldChange( event, 2 );
+        });
+    }
+    if( config.child3FolderNameFld ) {
+        kintone.events.on( 'app.record.create.change.' + config.child3FolderNameFld, function(event) {
+            return subFolderFieldChange( event, 3 );
+        });
+    }
+    if( config.child4FolderNameFld ) {
+        kintone.events.on( 'app.record.create.change.' + config.child4FolderNameFld, function(event) {
+            return subFolderFieldChange( event, 4 );
+        });
+    }
+    if( config.child5FolderNameFld ) {
+        kintone.events.on( 'app.record.create.change.' + config.child5FolderNameFld, function(event) {
+            return subFolderFieldChange( event, 5 );
+        });
+    }
 
     // 明細編集
     kintone.events.on('app.record.edit.show', function(event) {
@@ -795,12 +899,15 @@ jQuery.noConflict();
                 if( config.child3FolderNameFld )  event.record[config.child3FolderNameFld]['disabled'] = true;  
                 if( config.child4FolderNameFld )  event.record[config.child4FolderNameFld]['disabled'] = true;  
                 if( config.child5FolderNameFld )  event.record[config.child5FolderNameFld]['disabled'] = true;  
+                // ToDo
+                // disableSubFolderFields( event, configChildFolderNameFlds.length );   
 
                 hidden_dropdown_spaces(); // 階層ドロップダウン用スペース非表示
 
             } else {
                 displayDropDown( event );
             }
+            
         }
         return event;
     });
@@ -815,7 +922,13 @@ jQuery.noConflict();
             if( config.child3FolderNameFld )  event.record[config.child3FolderNameFld]['disabled'] = true;  
             if( config.child4FolderNameFld )  event.record[config.child4FolderNameFld]['disabled'] = true;  
             if( config.child5FolderNameFld )  event.record[config.child5FolderNameFld]['disabled'] = true;  
+            // ToDo
+            // disableSubFolderFields( event, configChildFolderNameFlds.length );   
         }
+        return event;
+    });
+
+    kintone.events.on('app.record.index.show', function(event) {
         return event;
     });
 
@@ -850,7 +963,7 @@ jQuery.noConflict();
     });
 
     // 編集レコード保存時
-    kintone.events.on('app.record.edit.submit', async function(event) {
+    kintone.events.on(['app.record.edit.submit','app.record.index.edit.submit'], async function(event) {
         if (!event.record[config.folderIdFld].value) {
             return submitRecord(event);
         }

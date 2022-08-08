@@ -39,7 +39,9 @@ jQuery.noConflict();
                 'invalid_folder_id': 'Invalid folder ID.',
                 'fields_are_same': 'The values of the "Box Parent Folder Filed" and '
                                     + '"Box Folder ID Field" fields must be different.',
-                'prohibit_to_download': 'Allow file download only to collaborators'
+                'prohibit_to_download': 'Allow file download only to collaborators',
+                'child_folder_select_only_depth': 'child folder select only depth',
+                'max_delay_time': 'max delay time(x100ms)'
             },
             'ja': {
                 'box_app_token': 'Box アプリケーショントークン',
@@ -75,7 +77,9 @@ jQuery.noConflict();
                 'required_field': '必須項目を入力してください。',
                 'invalid_folder_id': 'フォルダIDが不正です。',
                 'fields_are_same': '「Box親フォルダIDフィールド」と「BoxフォルダーIDフィールド」には、同じフィールドを指定できません。',
-                'prohibit_to_download': 'コラボレータにのみダウンロードを許可する'
+                'prohibit_to_download': 'コラボレータにのみダウンロードを許可する',
+                'child_folder_select_only_depth': '直接入力不可階層数',
+                'max_delay_time': '最大遅延時間(x100ms)'
             }
         };
 
@@ -96,9 +100,9 @@ jQuery.noConflict();
         var i18n = (lang in terms) ? terms[lang] : terms['en'];
 
         // html テンプレートで html からエレメントの生成
-        var html = $('#boxPlugin-config-cybozu').html();
+        var html = $('#boxUiPlugin-config').html();
         var tmpl = $.templates(html);
-        $('div#boxPlugin-config-cybozu').html(tmpl.render({'terms': i18n}));
+        $('div#boxUiPlugin-config').html(tmpl.render({'terms': i18n}));
 
         // アプリの全フィールド情報を取得しながら、選択可能なものをリストボックスに追加する
         //   今回のように項目数が決まっていれば、項目ごとに取得するより効率的。
@@ -176,6 +180,12 @@ jQuery.noConflict();
             if (config['child5FolderSelectSpace']) {
                 $('#child5_folder_select_space').val(config['child5FolderSelectSpace']);
             }
+            if (config['childFolderSelectOnlyDepth']) {
+                $('#child_folder_select_only_depth').val(config['childFolderSelectOnlyDepth']);
+            }
+            if (config['maxDelayTime']) {
+                $('#max_delay_time').val(config['maxDelayTime']);
+            }
         });
 
         // 保管処理
@@ -195,6 +205,8 @@ jQuery.noConflict();
             var child3FolderSelectSpace = $('#child3_folder_select_space').val();
             var child4FolderSelectSpace = $('#child4_folder_select_space').val();
             var child5FolderSelectSpace = $('#child5_folder_select_space').val();
+            var childFolderSelectOnlyDepth = $('#child_folder_select_only_depth').val();
+            var maxDelayTime = $('#max_delay_time').val();
 
             if (!parentFolderId.match(/^[0-9]+$/) || folderIdFld.length > 20) {
                 alert(i18n.invalid_folder_id);
@@ -230,6 +242,8 @@ jQuery.noConflict();
             config['child3FolderSelectSpace'] = child3FolderSelectSpace;
             config['child4FolderSelectSpace'] = child4FolderSelectSpace;
             config['child5FolderSelectSpace'] = child5FolderSelectSpace;
+            config['childFolderSelectOnlyDepth'] = childFolderSelectOnlyDepth;
+            config['maxDelayTime'] = maxDelayTime;
 
             kintone.plugin.app.setConfig(config);
         });

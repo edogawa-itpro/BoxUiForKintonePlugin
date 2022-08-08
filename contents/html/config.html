@@ -1,7 +1,7 @@
 <link rel="stylesheet" type="text/css" href="../css/51-modern-default.css">
 <link rel="stylesheet" type="text/css" href="../css/config.css">
 
-<div id="boxPlugin-config-cybozu" class="boxPlugin-config-cybozu">
+<div id="boxUiPlugin-config" class="boxUiPlugin-config">
     <div class="block">
         <div class="kintoneplugin-label">
             {{html:terms.box_app_token}}<span class="kintoneplugin-require">*</span>
@@ -149,9 +149,27 @@
             </div>
         </div>
     </div>
-    <div class="form-submit">
+    <div class="block">
+        <div class="kintoneplugin-label">
+            {{html:terms.child_folder_select_only_depth}}<span class="kintoneplugin-require"></span>
+        </div>
+        <div class="input-text-outer-cybozu">
+            <input type="text" id="child_folder_select_only_depth" size="2" class="kintoneplugin-input-text"/>
+        </div>
+    </div>
+    <div class="block">
+        <div class="kintoneplugin-label">
+            {{html:terms.max_delay_time}}<span class="kintoneplugin-require"></span>
+        </div>
+        <div class="input-text-outer-cybozu">
+            <input type="text" id="max_delay_time" size="2" class="kintoneplugin-input-text"/>
+        </div>
+    </div>
+    <div class="block">
+      <div class="form-submit">
         <button id="plugin_submit" class="kintoneplugin-button-dialog-ok" type="button">{{html:terms.plugin_submit}}</button>
         <button id="plugin_cancel" class="kintoneplugin-button-dialog-cancel" type="button">{{html:terms.plugin_cancel}}</button>
+      </div>
     </div>
 </div>
 
