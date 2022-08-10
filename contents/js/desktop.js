@@ -185,7 +185,7 @@ jQuery.noConflict();
     async function get_folder_items(folder_id) {
         try {
             // default limit=100 1000件以上の場合はoffsetかmarkerを使う。
-            return ajax_get( BOX_API_BASE_URL + '/folders/' + folder_id + '/items?fields=type,id,sequence_id,etag,name,description&imit=1000', config.boxAppToken );
+            return ajax_get( BOX_API_BASE_URL + '/folders/' + folder_id + '/items?fields=type,id,sequence_id,etag,name,description&limit=1000', config.boxAppToken );
         } catch(e) {
           throw e;
         }
@@ -879,6 +879,21 @@ jQuery.noConflict();
             return subFolderFieldChange( event, 5 );
         });
     }
+
+    // 明細新規
+    kintone.events.on('app.record.create.show', function(event) {
+        if (validateConfig(event.record)) {
+
+            // 複写時の対応
+            event.record[config.folderIdFld]["value"] = '';    
+
+            // フォルダIDは入力禁止
+            event.record[config.folderIdFld]['disabled'] = true;  
+            displayDropDown( event );
+
+        }
+        return event;
+    });
 
     // 明細編集
     kintone.events.on('app.record.edit.show', function(event) {
