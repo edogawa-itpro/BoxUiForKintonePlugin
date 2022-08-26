@@ -374,25 +374,14 @@ jQuery.noConflict();
         return entries;
     }
 
-
-    // 下位のドロップダウンとオートコンプリートの設定
-    //   fieldIndex : 1～MAX_DEPTH-1
-    async function setNextDropdown( fieldIndex ) {
-        if( fieldIndex < 1 || fieldIndex >= MAX_DEPTH ) return;
-        if( selectArray[ fieldIndex-1 ] &&  selectArray[ fieldIndex ] ) {
-            // 選択されたBoxフォルダ内の情報取得
-            var entries = await getBoxFolderEntries( selectArray[ fieldIndex-1 ].value );
-            if( entries ) {
-                // 下位の階層に設定
-                setSelectItems( entries, selectArray[ fieldIndex ] ); // ドロップダウン設定 
-                setAutocomplete( entries, fieldIndex+1 );      // オートコンプリート設定
-            }
-        }
-    }
-
     // ドロップダウン(select)の選択肢の作成
     //   Box のディレクトリからリストを作成
-    var setSelectItems = function( entries, select ) {
+    //   fieldIndex : 1～MAX_DEPTH
+    var setSelectItems = function( entries, fieldIndex ) {
+
+        var select = selectArray[ fieldIndex-1 ];
+        if( !select ) return;
+
         var option_html = '<option value=""></option>';
 
         if( entries ) {
@@ -452,228 +441,140 @@ jQuery.noConflict();
     //
     var displayDropDown = async function(event) {
         var record = event.record;
-
-        // レコード複写登録時のリスト作成用
-        var subfolder_id1;
-        var subfolder_id2;
-        var subfolder_id3;
-        var subfolder_id4;
-        var subfolder_id5;
+        var subfolder_id;  // レコード複写登録時のリスト作成用
 
         // config に設定があればドロップダウンを表示
         //   複写入力時の初期化も考慮
         if( config.child1FolderSelectSpace ) {
-  
-            setFieldEvent(); // change イベント設定
 
-            // DOM に割り当て
-            var dropdown1 = createDropdownElement('dropdown_select_1');
-            kintone.app.record.getSpaceElement(config.child1FolderSelectSpace).appendChild(dropdown1);
-
-            // １階層目のドロップダウンリスト作成
-            select1 = $('#dropdown_select_1').get(0);
-            selectArray[0] = select1;
-            var entries = await getBoxFolderEntries( config.parentFolderId );
-            setSelectItems( entries, select1 ); 
-            // オートコンプリート設定
-            setAutocomplete( entries, 1 ); 
-
-            // フィールドに値があるか(複写時の階層選択設定)
-            var selected_name = record[ config.child1FolderNameFld ].value; 
-            if( selected_name ) {
-                subfolder_id1 = setSelectedByText( select1, selected_name );
-            }
-
+            // DOM 割り当て
+            select1 = createDropDownElement( 'dropdown_select_1', config.child1FolderSelectSpace, 1 );
+            subfolder_id = await setDropdownByText(  config.parentFolderId , 1, record[ config.child1FolderNameFld ].value );
         }
-
-        // ２階層以下同様
         if( config.child2FolderSelectSpace ) {
-
-            var dropdown2 = createDropdownElement('dropdown_select_2');
-            kintone.app.record.getSpaceElement(config.child2FolderSelectSpace).appendChild(dropdown2);
-            select2 = $('#dropdown_select_2').get(0);
-            selectArray[1] = select2;
-
-            // フィールドに値があるか(複写時の階層選択設定)
-            if( subfolder_id1 ) {
-                // await setSelectItems( subfolder_id1, select2 ); 
-                var entries = await getBoxFolderEntries( subfolder_id1 );
-                setSelectItems( entries, select2 ); // ドロップダウン設定 
-                setAutocomplete( entries, 2 );      // オートコンプリート設定
-                var selected_name = record[ config.child2FolderNameFld ].value; 
-                if( selected_name ) {
-                     subfolder_id2 = setSelectedByText( select2, selected_name );
-                }
-            }
-
+            select2 = createDropDownElement( 'dropdown_select_2', config.child2FolderSelectSpace, 2 );
+            subfolder_id = await setDropdownByText(  subfolder_id , 2, record[ config.child2FolderNameFld ].value );
         }
         if( config.child3FolderSelectSpace ) {
-            var dropdown3 = createDropdownElement('dropdown_select_3');
-            kintone.app.record.getSpaceElement(config.child3FolderSelectSpace).appendChild(dropdown3);
-            select3 = $('#dropdown_select_3').get(0);
-            selectArray[2] = select3;
-
-            // フィールドに値があるか(複写時の階層選択設定)
-            if( subfolder_id2 ) {
-                // await setSelectItems( subfolder_id2, select3 ); 
-                var entries = await getBoxFolderEntries( subfolder_id2 );
-                setSelectItems( entries, select3 ); 
-                setAutocomplete( entries, 3 );      // オートコンプリート設定
-                var selected_name = record[ config.child3FolderNameFld ].value; 
-                if( selected_name ) {
-                     subfolder_id3 = setSelectedByText( select3, selected_name );
-                }
-            }
-
+            select3 = createDropDownElement( 'dropdown_select_3', config.child3FolderSelectSpace, 3 );
+            subfolder_id = await setDropdownByText(  subfolder_id , 3, record[ config.child3FolderNameFld ].value );
         }
         if( config.child4FolderSelectSpace ) {
-            var dropdown4 = createDropdownElement('dropdown_select_4');
-            kintone.app.record.getSpaceElement(config.child4FolderSelectSpace).appendChild(dropdown4);
-            select4 = $('#dropdown_select_4').get(0);
-            selectArray[3] = select4;
-            // フィールドに値があるか(複写時の階層選択設定)
-            if( subfolder_id3 ) {
-                // await setSelectItems( subfolder_id3, select4 ); 
-                var entries = await getBoxFolderEntries( subfolder_id3 );
-                setSelectItems( entries, select4 ); 
-                setAutocomplete( entries, 4 );      // オートコンプリート設定
-                var selected_name = record[ config.child4FolderNameFld ].value; 
-                if( selected_name ) {
-                     subfolder_id4 = setSelectedByText( select4, selected_name );
-                }
-            }
+            select4 = createDropDownElement( 'dropdown_select_4', config.child4FolderSelectSpace, 4 );
+            subfolder_id = await setDropdownByText(  subfolder_id , 4, record[ config.child4FolderNameFld ].value );
         }
         if( config.child5FolderSelectSpace ) {
-            var dropdown5 = createDropdownElement('dropdown_select_5');
-            kintone.app.record.getSpaceElement(config.child5FolderSelectSpace).appendChild(dropdown5);
-            select5 = $('#dropdown_select_5').get(0);
-            selectArray[4] = select5;
-            // フィールドに値があるか(複写時の階層選択設定)
-            if( subfolder_id4 ) {
-                // await setSelectItems( subfolder_id4, select5 ); 
-                var entries = await getBoxFolderEntries( subfolder_id4 );
-                setSelectItems( entries, select5 ); 
-                setAutocomplete( entries, 5 );      // オートコンプリート設定
-                var selected_name = record[ config.child5FolderNameFld ].value; 
-                if( selected_name ) {
-                     subfolder_id5 = setSelectedByText( select5, selected_name );
-                }
-            }
+            select5 = createDropDownElement( 'dropdown_select_5', config.child5FolderSelectSpace, 5 );
+            await setDropdownByText(  subfolder_id , 5, record[ config.child5FolderNameFld ].value );
         }
 
-        //
         // ドロップダウンのイベント処理
-        //
         if( select1 ) {
 
             // 選択時のイベント処理
             select1.addEventListener('change', async function(event) {
-                // 値を別のフィールドにも設定
-                var record = kintone.app.record.get(); // レコード情報のコピー
-                var option = this.options[ this.selectedIndex ];
-                record.record[config.child1FolderNameFld].value = option.text;
-
-                // 下位層の選択肢の作成
-                if( select2 ) {
-                    // setSelectItems( option.value, select2 ); 
-                    var entries = await getBoxFolderEntries( option.value );
-                    setSelectItems( entries, select2 ); // ドロップダウン設定 
-                    setAutocomplete( entries, 2 );      // オートコンプリート設定
-                    record.record[config.child2FolderNameFld].value = '';
-                }
-                if( select3 ) {
-                    select3.innerHTML = '';
-                    record.record[config.child3FolderNameFld].value = '';
-                }
-                if( select4 ) {
-                    select4.innerHTML = '';
-                    record.record[config.child4FolderNameFld].value = '';
-                }
-                if( select5 ) {
-                    select5.innerHTML = '';
-                    record.record[config.child5FolderNameFld].value = '';
-                }
-                kintone.app.record.set(record) ; // 設定
+                await selectEventCommon( 1 );
             });
         }
         if( select2 ) {
-
-            // 選択時のイベント処理
             select2.addEventListener('change', async function(event) {
-                var record = kintone.app.record.get();
-                var option = this.options[ this.selectedIndex ];
-                record.record[config.child2FolderNameFld].value = option.text;
-                // 下位層の選択肢の作成
-                if( select3 ) {
-                    // setSelectItems( option.value, select3 ); 
-                    var entries = await getBoxFolderEntries( option.value );
-                    setSelectItems( entries, select3 ); // ドロップダウン設定 
-                    setAutocomplete( entries, 3 );      // オートコンプリート設定
-                    record.record[config.child3FolderNameFld].value = '';
-                }
-                if( select4 ) {
-                    select4.innerHTML = '';
-                    record.record[config.child4FolderNameFld].value = '';
-                }
-                if( select5 ) {
-                    select5.innerHTML = '';
-                    record.record[config.child5FolderNameFld].value = '';
-                }
-                kintone.app.record.set(record) ; // 設定
+                await selectEventCommon( 2 );
             });
         }
         if( select3 ) {
-
-            // 選択時のイベント処理
             select3.addEventListener('change', async function(event) {
-                var record = kintone.app.record.get();
-                var option = this.options[ this.selectedIndex ];
-                record.record[config.child3FolderNameFld].value = option.text;
-                // 下位層の選択肢の作成
-                if( select4 ) {
-                    // setSelectItems( option.value, select4 ); 
-                    var entries = await getBoxFolderEntries( option.value );
-                    setSelectItems( entries, select4 ); // ドロップダウン設定 
-                    setAutocomplete( entries, 4 );      // オートコンプリート設定
-                    record.record[config.child4FolderNameFld].value = '';
-                }
-                if( select5 ) {
-                    setSelectItems( option.value, select5 ); 
-                    record.record[config.child5FolderNameFld].value = '';
-                }
-                kintone.app.record.set(record) ; // 設定
+                await selectEventCommon( 3 );
             });
         }
         if( select4 ) {
-
-            // 選択時のイベント処理
             select4.addEventListener('change', async function(event) {
-                var record = kintone.app.record.get();
-                var option = this.options[ this.selectedIndex ];
-                record.record[config.child4FolderNameFld].value = option.text;
-                // 下位層の選択肢の作成
-                if( select5 ) {
-                    // setSelectItems( option.value, select5 ); 
-                    var entries = await getBoxFolderEntries( option.value );
-                    setSelectItems( entries, select5 ); // ドロップダウン設定 
-                    setAutocomplete( entries, 5 );      // オートコンプリート設定
-                    record.record[config.child5FolderNameFld].value = '';
-                }
-                kintone.app.record.set(record) ; // 設定
+                await selectEventCommon( 4 );
             });
         }
         if( select5 ) {
-
-            // 選択時のイベント処理
             select5.addEventListener('change', async function(event) {
-                var record = kintone.app.record.get();
-                var option = this.options[ this.selectedIndex ];
-                record.record[config.child5FolderNameFld].value = option.text;
-                kintone.app.record.set(record) ; // 設定
+                await selectEventCommon( 5 );
             });
         }
- 
         return event;
+    }
+
+    // DOMの割り当て
+    function createDropDownElement( elementId, spaceCode, fieldIndex ) {
+            var dropdown = createDropdownElement( elementId );
+            kintone.app.record.getSpaceElement( spaceCode ).appendChild(dropdown);
+            var select = $('#' + elementId ).get(0);
+            selectArray[fieldIndex-1] = select;
+            return select;
+    }
+
+    // 次のドロップダウンの設定
+    async function setDropdownByText( prevFolderId, fieldIndex, selectedText ) {
+        var folder_id;
+
+        if( prevFolderId ) {        
+            var entries = await getBoxFolderEntries( prevFolderId );
+            setSelectItems(  entries, fieldIndex ); // ドロップダウン設定 
+            setAutocomplete( entries, fieldIndex ); // オートコンプリート設定
+            if( selectedText ) {
+                 folder_id = setSelectedByText( selectArray[ fieldIndex], selectedText );
+            }
+        }
+        return folder_id;
+    }
+
+    // 下位のドロップダウンへの値設定とオートコンプリートの設定(kintone.events.on 内)
+    //   fieldIndex : 1～MAX_DEPTH-1
+    //   selectEventCommon() と共通化できそうだが、
+    //   kintone.app.record.get/set() は kintone.events.on() からは使えない。event.record を使えという事。
+    //   逆にそれ以外では event 自体が渡らない。
+   
+    async function setNextDropdown( fieldIndex ) {
+        if( fieldIndex < 1 || fieldIndex >= MAX_DEPTH ) return;
+        if( selectArray[ fieldIndex-1 ] &&  selectArray[ fieldIndex ] ) {
+            // 選択されたBoxフォルダ内の情報取得
+            var entries = await getBoxFolderEntries( selectArray[ fieldIndex-1 ].value );
+            if( entries ) {
+                // 下位の階層に設定
+                setSelectItems(  entries, fieldIndex+1 ); // ドロップダウン設定 
+                setAutocomplete( entries, fieldIndex+1 ); // オートコンプリート設定
+            }
+        }
+        // さらに下位はクリア
+        for( var i = fieldIndex+1; i < selectArray.length; i++ ) { 
+            if( !selectArray[i] ) break;
+            selectArray[i].innerHTML = '';
+            // record.record[ configChildFolderFields[i] ].value = '';
+        }
+    }
+
+    // ドロップダウンのイベント共通処理(非 kintone.events.on 内)
+    //   選択された値の文字フィールドへの設定と下位ドロップダウンへの値設定
+    async function selectEventCommon( fieldIndex ) {
+        if( fieldIndex <= 0 || fieldIndex > MAX_DEPTH ) return;
+        var select = selectArray[fieldIndex-1];
+        if( !select ) return;
+
+        // 値を別のフィールドにも設定
+        var record = kintone.app.record.get(); // レコード情報のコピー
+        var option = select.options[ select.selectedIndex ];
+        record.record[ configChildFolderFields[ fieldIndex-1 ] ].value = option.text;
+
+        // 下位層の選択肢の作成
+        if( fieldIndex < selectArray.length ) {
+            var entries = await getBoxFolderEntries( option.value ); // フォルダID
+            setSelectItems(  entries, fieldIndex+1 ); // ドロップダウン設定 
+            setAutocomplete( entries, fieldIndex+1 ); // オートコンプリート設定
+            record.record[ configChildFolderFields[fieldIndex] ].value = '';
+
+        }
+        // さらに下位はクリア
+        for( var i = fieldIndex+1; i < selectArray.length; i++ ) { 
+            if( !selectArray[i] ) break;
+            selectArray[i].innerHTML = '';
+            record.record[ configChildFolderFields[i] ].value = '';
+        }
+        kintone.app.record.set(record) ; // レコード情報の反映
     }
 
     // サブフォルダの入力禁止
@@ -703,42 +604,13 @@ jQuery.noConflict();
         return false;
     }
 
-    // サブフォルダのフィールド入力イベントの処理
-    //     async/await が使えない
-    //     fieldIndex : 1～MAX_DEPTH
-    function subFolderFieldChange( event, fieldIndex ) {
-
-       // alert( no + ":イベント！");
-       // select リストに文字列がある(選択済) -> 何もしない
-       // select リストに文字列がある(非選択) -> 選択して下位のフォルダ設定
-       // select リストに文字列がない         -> 何もしない
-
-       var textValue = event.changes.field.value;
-       for( var i = 0; i < MAX_DEPTH-1; i++ ) {
-           var select = selectArray[ i ] ;
-           if( fieldIndex == i+1 && select ) {
-               if( !isSelected( select, textValue ) ) {
-                   if( setSelectedText(select, textValue ) ) {
-                       // 下位層の選択肢の作成
-                       // イベント発火は予期しない動作になるので不可
-                       // var ev = new Event('change');
-                       // select.dispatchEvent( ev );
-                       // if( selectArray[ i+1 ]  ) {
-                       //     await setNextDropdown( i+1 ); -- これをどうするか？★
-                       // }
-                   }
-               }     
-           }        
-
-       }
-
-    }
-
     //
     // ■ オートコンプリート  
     //
  
-    // フィールドコードからフィールド名の取得(オートコンプリートに必要)
+    // フィールドコードからフィールド名の取得
+    //    ※ kintone.app.record.getFieldElement() は編集画面では使えない(nullが返る)
+    //    ただしラベル非表示の場合使えないので注意。
     var getFieldNames = async function() {
 
         // １回だけで良い
@@ -758,7 +630,9 @@ jQuery.noConflict();
     }
 
     // フィールド名(フィールドコードでは無い)からDOMエレメントの取得
-    //   ラベル付きでないと取得できない
+    //    kintone.app.record.getFieldElement() は編集画面では使えない(nullが返る)
+    //   ラベルを非表示にすると取得できないので注意。
+    //   ラベルなしでエレメントを取得する術が無い。
     var getFieldInputElement = function(fieldName){
         var input;
 
@@ -768,99 +642,10 @@ jQuery.noConflict();
             }
         });
 
-        if( !input ) {
-            // ラベル付きでない場合 ちょっと強引！
-            var i;
-            for( i = 0; i < configChildFolderFldNames.length; i++ ) {
-                if( fieldName == configChildFolderFldNames[i] ) break;
-            }
-            if( i < configChildFolderFldNames.length ) {
-                var el = kintone.app.record.getFieldElement( configChildFolderFields[i] );
-                input = $(el).find('input');
-            }
-        }
         return input;
     };
 
-    // jQuery のフィールドイベントの設定
-    //   kintone のchangeイベントは非同期処理が使えないので jQuery のchangeイベントを使う。
-    //   autocomplete だけでは現在のフィールドの"値"が分からない
-    //   なお、jQuery から"値"を設定してもイベントは発生しない
-
-    async function setFieldEvent() {
-
-        // 冗長であるがフィールドごとに処理を分ける
-        //   まとめられそうな気もする・・・
-
-        if( configChildFolderFldNames.length > 0 ) {
-            var element = getFieldInputElement( configChildFolderFldNames[ 0 ] );
-            if( element ) {
-                // イベント設定
-                element.change( async function() {
-                    // 入力フィールドに関連するドロップダウンのエレメント
-                    var select = selectArray[ 0 ] ;
-                    // 選択されていれば何もしない
-                    if( !isSelected( select, $(this).val() ) ) {
-                        // 選択できれば次の階層を準備
-                        if( setSelectedText( select, $(this).val() ) ) {
-                            await setNextDropdown( 1 );
-                        }
-                    }
-                });
-            }
-        }
-        if( configChildFolderFldNames.length > 1 ) {
-            var element = getFieldInputElement( configChildFolderFldNames[ 1 ] );
-            if( element ) {
-                // イベント設定
-                element.change( async function() {
-                    var select = selectArray[ 1 ] ;
-                    // 選択されていれば何もしない
-                    if( !isSelected( select, $(this).val() ) ) {
-                        // 選択できれば次の階層を準備
-                        if( setSelectedText( select, $(this).val() ) ) {
-                            await setNextDropdown( 2 );
-                        }
-                    }
-                });
-            }
-        }
-        if( configChildFolderFldNames.length > 2 ) {
-            var element = getFieldInputElement( configChildFolderFldNames[ 2 ] );
-            if( element ) {
-                // イベント設定
-                element.change( async function() {
-                    var select = selectArray[ 2 ] ;
-                    // 選択されていれば何もしない
-                    if( !isSelected( select, $(this).val() ) ) {
-                        // 選択できれば次の階層を準備
-                        if( setSelectedText( select, $(this).val() ) ) {
-                            await setNextDropdown( 3 );
-                        }
-                    }
-                });
-            }
-        }
-        if( configChildFolderFldNames.length > 3 ) {
-            var element = getFieldInputElement( configChildFolderFldNames[ 3 ] );
-            if( element ) {
-                // イベント設定
-                element.change( async function() {
-                    var select = selectArray[ 3 ] ;
-                    // 選択されていれば何もしない
-                    if( !isSelected( select, $(this).val() ) ) {
-                        // 選択できれば次の階層を準備
-                        if( setSelectedText( select, $(this).val() ) ) {
-                            await setNextDropdown( 4 );
-                        }
-                    }
-                });
-            }
-        }
-
-    }
-
-    // オートコンプリートの設定
+    // オートコンプリートのデータ設定
     //   fieldNameIndex : 1～MAX_DEPTH
     //   entries : box api result
     function setAutocomplete( entries, fieldIndex ) {
@@ -1014,13 +799,70 @@ jQuery.noConflict();
         return event;
     };
 
+    // サブフォルダの入力イベントの処理
+    //   同期関数なので非同期処理は Promise を生成
+    //   呼び出し元には即座に処理が戻る
+    //   fieldIndex : 1～MAX_DEPTH
+    function subFolderFieldChange( event, fieldIndex ) {
+        var val = event.record[ configChildFolderFields[fieldIndex-1] ].value;
+        var select = selectArray[ fieldIndex-1 ] ; // select box のエレメント
+
+        // 選択されていれば何もしない
+        if( !isSelected( select, val ) ) {
+            // 選択できれば次の階層を準備
+            if( setSelectedText( select, val ) ) {
+                //
+                // ToDo event.record の設定を先に   
+                //  
+                // 別の非同期処理を平行して実行  result は Promise で意味が無い(returnで返さない事)
+                var result = new kintone.Promise(async function(resolve, reject) {
+                    await setNextDropdown( fieldIndex );
+                    //  kintone.app.record.get(); は kintone.events.on() からは使えない！ 
+                    //  await selectEventCommon( fieldIndex );
+                    resolve();
+                });
+            }
+        }
+
+        return event;
+    }
+
     //
     // ■ Kintone のイベント処理
     //
 
-    // ※ Kintoneのフィールドchangeイベントは使わない
-    //   ★ promise が使えない。結果、同イベント内で非同期関数(new kintone.Promise())を実行する事になりメリットが無い。
-    //   jQuery で拾ったほうが本件ではスマート
+    // Kintoneのフィールドイベント
+    //   ※ このイベントでは、async/await は使えないので注意
+    //   子フォルダの入力イベント(セレクトボックスからの設定でも起こる)
+    //   まとめて処理できそうだが、どのフィールドで起こったかの情報が無い(changesにも無い) 
+    //   入口だけフィールドの数だけ書く。
+
+    if( config.child1FolderNameFld ) {
+        kintone.events.on( 'app.record.create.change.' + config.child1FolderNameFld, function(event) {
+            return subFolderFieldChange( event, 1 );
+        });
+    }
+    if( config.child2FolderNameFld ) {
+        kintone.events.on( 'app.record.create.change.' + config.child2FolderNameFld, function(event) {
+            return subFolderFieldChange( event, 2 );
+        });
+    }
+    if( config.child3FolderNameFld ) {
+        kintone.events.on( 'app.record.create.change.' + config.child3FolderNameFld, function(event) {
+            return subFolderFieldChange( event, 3 );
+        });
+    }
+    if( config.child4FolderNameFld ) {
+        kintone.events.on( 'app.record.create.change.' + config.child4FolderNameFld, function(event) {
+            return subFolderFieldChange( event, 4 );
+        });
+    }
+    if( config.child5FolderNameFld ) {
+        kintone.events.on( 'app.record.create.change.' + config.child5FolderNameFld, function(event) {
+            return subFolderFieldChange( event, 5 );
+        });
+    }
+
 
     // 明細新規
     kintone.events.on('app.record.create.show', async function(event) {
@@ -1034,7 +876,7 @@ jQuery.noConflict();
   
             await getFieldNames(); // フィールド名の取得 
 
-            displayDropDown( event );
+            displayDropDown( event ); // ドロップダウン表示
 
         }
         disableSubFolderFields( event );
@@ -1057,12 +899,9 @@ jQuery.noConflict();
             //   フォルダ名の変更は出来ないので。
             if (event.record[config.folderIdFld]["value"]) { 
                 event.record[config.folderNameFld]['disabled'] = true;  
-                if( config.child1FolderNameFld )  event.record[config.child1FolderNameFld]['disabled'] = true;  
-                if( config.child2FolderNameFld )  event.record[config.child2FolderNameFld]['disabled'] = true;  
-                if( config.child3FolderNameFld )  event.record[config.child3FolderNameFld]['disabled'] = true;  
-                if( config.child4FolderNameFld )  event.record[config.child4FolderNameFld]['disabled'] = true;  
-                if( config.child5FolderNameFld )  event.record[config.child5FolderNameFld]['disabled'] = true;  
-
+                for( var i = 0; i < configChildFolderFields.length; i++ ) {
+                    event.record[ configChildFolderFields[i] ]['disabled'] = true;  
+                }
                 hidden_dropdown_spaces(); // 階層ドロップダウン用スペース非表示
 
             } else {
@@ -1079,13 +918,9 @@ jQuery.noConflict();
         if (validateConfig(event.record)) {
             event.record[config.folderNameFld]['disabled'] = true;
             event.record[config.folderIdFld]['disabled'] = true;
-            if( config.child1FolderNameFld )  event.record[config.child1FolderNameFld]['disabled'] = true;  
-            if( config.child2FolderNameFld )  event.record[config.child2FolderNameFld]['disabled'] = true;  
-            if( config.child3FolderNameFld )  event.record[config.child3FolderNameFld]['disabled'] = true;  
-            if( config.child4FolderNameFld )  event.record[config.child4FolderNameFld]['disabled'] = true;  
-            if( config.child5FolderNameFld )  event.record[config.child5FolderNameFld]['disabled'] = true;  
-            // ToDo
-            // disableSubFolderFields( event, configChildFolderFields.length );   
+            for( var i = 0; i < configChildFolderFields.length; i++ ) {
+                event.record[ configChildFolderFields[i] ]['disabled'] = true;  
+            }
         }
         return event;
     });
