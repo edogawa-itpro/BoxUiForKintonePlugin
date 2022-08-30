@@ -523,31 +523,6 @@ jQuery.noConflict();
         return folder_id;
     }
 
-    // 下位のドロップダウンへの値設定とオートコンプリートの設定(kintone.events.on 内)
-    //   fieldIndex : 1～MAX_DEPTH-1
-    //   selectEventCommon() と共通化できそうだが、
-    //   kintone.app.record.get/set() は kintone.events.on() からは使えない。event.record を使えという事。
-    //   逆にそれ以外では event 自体が渡らない。
-   
-    async function setNextDropdown( fieldIndex ) {
-        if( fieldIndex < 1 || fieldIndex >= MAX_DEPTH ) return;
-        if( selectArray[ fieldIndex-1 ] &&  selectArray[ fieldIndex ] ) {
-            // 選択されたBoxフォルダ内の情報取得
-            var entries = await getBoxFolderEntries( selectArray[ fieldIndex-1 ].value );
-            if( entries ) {
-                // 下位の階層に設定
-                setSelectItems(  entries, fieldIndex+1 ); // ドロップダウン設定 
-                setAutocomplete( entries, fieldIndex+1 ); // オートコンプリート設定
-            }
-        }
-        // さらに下位はクリア
-        for( var i = fieldIndex+1; i < selectArray.length; i++ ) { 
-            if( !selectArray[i] ) break;
-            selectArray[i].innerHTML = '';
-            // record.record[ configChildFolderFields[i] ].value = '';
-        }
-    }
-
     // ドロップダウンのイベント共通処理(非 kintone.events.on 内)
     //   選択された値の文字フィールドへの設定と下位ドロップダウンへの値設定
     async function selectEventCommon( fieldIndex ) {
@@ -799,32 +774,22 @@ jQuery.noConflict();
         return event;
     };
 
-    // サブフォルダの入力イベントの処理
-    //   同期関数なので非同期処理は Promise を生成
-    //   呼び出し元には即座に処理が戻る
+    // サブフォルダのフィールド変更イベントの処理
+    //   非同期関数なので Promise を返す(フィールド変更イベント処理内では無視する事)
+    //   フィールドの値の変更はsleep以後の非同期関数内でkintone.app.record.get/setで行う
     //   fieldIndex : 1～MAX_DEPTH
-    function subFolderFieldChange( event, fieldIndex ) {
+    async function subFolderFieldChange( event, fieldIndex ) {
         var val = event.record[ configChildFolderFields[fieldIndex-1] ].value;
         var select = selectArray[ fieldIndex-1 ] ; // select box のエレメント
 
-        // 選択されていれば何もしない
-        if( !isSelected( select, val ) ) {
-            // 選択できれば次の階層を準備
+        // 既に選択されていれば何もしない
+        if( select && !isSelected( select, val ) ) {
+            // 選択できれば次の階層を準備する
             if( setSelectedText( select, val ) ) {
-                //
-                // ToDo event.record の設定を先に   
-                //  
-                // 別の非同期処理を平行して実行  result は Promise で意味が無い(returnで返さない事)
-                var result = new kintone.Promise(async function(resolve, reject) {
-                    await setNextDropdown( fieldIndex );
-                    //  kintone.app.record.get(); は kintone.events.on() からは使えない！ 
-                    //  await selectEventCommon( fieldIndex );
-                    resolve();
-                });
+                await sleep(1); // 非同期処理が必ず実行される事を担保する
+                await selectEventCommon( fieldIndex );
             }
         }
-
-        return event;
     }
 
     //
@@ -832,37 +797,42 @@ jQuery.noConflict();
     //
 
     // Kintoneのフィールドイベント
-    //   ※ このイベントでは、async/await は使えないので注意
+    //   ※ このイベント内では、async/await は使えないので注意
+    //      非同期処理は、起動した後に待たずこのイベントを終わらせる事で実行することは可能。
     //   子フォルダの入力イベント(セレクトボックスからの設定でも起こる)
     //   まとめて処理できそうだが、どのフィールドで起こったかの情報が無い(changesにも無い) 
     //   入口だけフィールドの数だけ書く。
 
     if( config.child1FolderNameFld ) {
         kintone.events.on( 'app.record.create.change.' + config.child1FolderNameFld, function(event) {
-            return subFolderFieldChange( event, 1 );
+            subFolderFieldChange( event, 1 ); // async なので戻り値を return しない事 
+            return event;
         });
     }
     if( config.child2FolderNameFld ) {
         kintone.events.on( 'app.record.create.change.' + config.child2FolderNameFld, function(event) {
-            return subFolderFieldChange( event, 2 );
+            subFolderFieldChange( event, 2 );
+            return event;
         });
     }
     if( config.child3FolderNameFld ) {
         kintone.events.on( 'app.record.create.change.' + config.child3FolderNameFld, function(event) {
-            return subFolderFieldChange( event, 3 );
+            subFolderFieldChange( event, 3 );
+            return event;
         });
     }
     if( config.child4FolderNameFld ) {
         kintone.events.on( 'app.record.create.change.' + config.child4FolderNameFld, function(event) {
-            return subFolderFieldChange( event, 4 );
+            subFolderFieldChange( event, 4 );
+            return event;
         });
     }
     if( config.child5FolderNameFld ) {
         kintone.events.on( 'app.record.create.change.' + config.child5FolderNameFld, function(event) {
-            return subFolderFieldChange( event, 5 );
+            subFolderFieldChange( event, 5 );
+            return event;
         });
     }
-
 
     // 明細新規
     kintone.events.on('app.record.create.show', async function(event) {
