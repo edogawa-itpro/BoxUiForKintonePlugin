@@ -37,14 +37,16 @@ jQuery.noConflict();
             'enter_box_folder_name_field': 'Box folder name field is required.',
             'item_name_in_use': 'folder name in use.',
             'item_name_invalid': 'folder name contain invalid character.',
+            'input_value_invalid': 'input value is invalid.',
             'error': 'Error:'
         },
         'ja': {
             'failed_to_create_folder': 'フォルダを作成できません。内容を修正後再度試してください。',
             'failed_to_create_subfolder': 'サブフォルダを作成できません。',
-            'enter_box_folder_name_field': 'Boxフォルダー名フィールドは必須です。',
+            'enter_box_folder_name_field': 'Boxのフォルダー名になるフィールドの値の入力は必須です。',
             'item_name_in_use': '同じ名前のフォルダーが既にあります。',
             'item_name_invalid': 'フォルダ名に使用できない文字が含まれています。',
+            'input_value_invalid': '入力に問題があります。',
             'error': 'Error:'
         }
     };
@@ -426,6 +428,7 @@ jQuery.noConflict();
     // select box text による選択
     //    selectエレメントを指定 value を返す(filter使うな simple is better!)
     function setSelectedByText( select, text ) {
+        if( !select ) return;
         var options = select.options;
         for(var i = 0; i < options.length; i++){
 	    if(options[i].text === text ){
@@ -508,16 +511,18 @@ jQuery.noConflict();
             return select;
     }
 
-    // 次のドロップダウンの設定
-    async function setDropdownByText( prevFolderId, fieldIndex, selectedText ) {
+    // ドロップダウンの設定
+    //   親フォルダと対象のフィールドインデックス(1～)と選択値を指定。
+    //   選択されていればそのフォルダーIDを返す
+    async function setDropdownByText( parentFolderId, fieldIndex, selectedText ) {
         var folder_id;
 
-        if( prevFolderId ) {        
-            var entries = await getBoxFolderEntries( prevFolderId );
+        if( parentFolderId && fieldIndex > 0  ) {        
+            var entries = await getBoxFolderEntries( parentFolderId );
             setSelectItems(  entries, fieldIndex ); // ドロップダウン設定 
             setAutocomplete( entries, fieldIndex ); // オートコンプリート設定
             if( selectedText ) {
-                 folder_id = setSelectedByText( selectArray[ fieldIndex], selectedText );
+                 folder_id = setSelectedByText( selectArray[ fieldIndex - 1], selectedText );
             }
         }
         return folder_id;
@@ -536,14 +541,13 @@ jQuery.noConflict();
         record.record[ configChildFolderFields[ fieldIndex-1 ] ].value = option.text;
 
         // 下位層の選択肢の作成
-        if( fieldIndex < selectArray.length ) {
+        if( fieldIndex < selectArray.length ) { // 意味ない selectArray.length == MAX_DEPTH
             var entries = await getBoxFolderEntries( option.value ); // フォルダID
             setSelectItems(  entries, fieldIndex+1 ); // ドロップダウン設定 
             setAutocomplete( entries, fieldIndex+1 ); // オートコンプリート設定
-            record.record[ configChildFolderFields[fieldIndex] ].value = '';
 
         }
-        // さらに下位はクリア
+        // さらに下位層はクリア
         for( var i = fieldIndex+1; i < selectArray.length; i++ ) { 
             if( !selectArray[i] ) break;
             selectArray[i].innerHTML = '';
@@ -656,7 +660,7 @@ jQuery.noConflict();
 
     // レコード保存処理(共通)
     //    event を返すこと
-    async function submitRecord(event) {
+    async function submitCommon(event) {
 
         // config の設定情報チェック
         if (!validateConfig(event.record)) {
@@ -668,14 +672,32 @@ jQuery.noConflict();
         var isCancel = await delayWait();
         if( isCancel ) return event;
 
-        // フォルダ名は必須
-        if (!event.record[config.folderNameFld].value) {
-            event.record[config.folderNameFld].error = i18n.enter_box_folder_name_field;
-            return event;
-        }
-
         var error = null;
         var record = event.record;
+
+        // 入力チェック
+        //   ★ 必須入力等のkintoneの標準チェックはプラグイン処理の後になるので同じチェックを行っておく必要がある。
+
+        // フォルダ名の入力は必須
+        if (!event.record[config.folderNameFld].value) {
+            event.record[config.folderNameFld].error = i18n.enter_box_folder_name_field;
+            error = i18n.input_value_invalid;
+        }
+
+        // サブフォルダに値があるかチェック
+        for( var i = 0; i < configChildFolderFields.length ; i++ ) {
+            var sub_folder_name = record[configChildFolderFields[i]]["value"];
+            if( !sub_folder_name ) {
+                event.record[configChildFolderFields[i]].error = i18n.enter_box_folder_name_field;
+                error = i18n.input_value_invalid;
+            }   
+        }
+
+        // 入力チェックでのエラーがあれば処理を中止する
+        if (error) {
+            event.error = error;
+            return event;
+        }
 
         var parent_folder_id = config.parentFolderId;
 
@@ -928,13 +950,13 @@ jQuery.noConflict();
 
     // 新規レコード保存時
     kintone.events.on('app.record.create.submit', async function(event) {
-        return submitRecord(event);
+        return submitCommon(event);
     });
 
     // 編集レコード保存時
     kintone.events.on(['app.record.edit.submit','app.record.index.edit.submit'], async function(event) {
         if (!event.record[config.folderIdFld].value) {
-            return submitRecord(event);
+            return submitCommon(event);
         }
         return event;
     });
